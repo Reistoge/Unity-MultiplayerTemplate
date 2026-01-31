@@ -12,9 +12,11 @@ namespace StarterAssets
 		public Vector2 look;
 		public bool jump;
 		public bool sprint;
+		public bool toggleCamera;
 
 		[Header("Movement Settings")]
 		public bool analogMovement;
+
 
 		[Header("Mouse Cursor Settings")]
 		public bool cursorLocked = true;
@@ -28,7 +30,7 @@ namespace StarterAssets
 
 		public void OnLook(InputValue value)
 		{
-			if(cursorInputForLook)
+			if (cursorInputForLook)
 			{
 				LookInput(value.Get<Vector2>());
 			}
@@ -43,13 +45,21 @@ namespace StarterAssets
 		{
 			SprintInput(value.isPressed);
 		}
-#endif
 
+		public void OnToggleCamera(InputValue value)
+		{
+			ToggleCameraInput(value.isPressed);
+		}
+#endif
+		public void ToggleCameraInput(bool newToggleCameraState)
+		{
+			toggleCamera = newToggleCameraState;
+		}
 
 		public void MoveInput(Vector2 newMoveDirection)
 		{
 			move = newMoveDirection;
-		} 
+		}
 
 		public void LookInput(Vector2 newLookDirection)
 		{
@@ -76,5 +86,5 @@ namespace StarterAssets
 			Cursor.lockState = newState ? CursorLockMode.Locked : CursorLockMode.None;
 		}
 	}
-	
+
 }

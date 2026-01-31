@@ -14,7 +14,7 @@ namespace StarterAssets
 #if ENABLE_INPUT_SYSTEM 
     [RequireComponent(typeof(PlayerInput))]
 #endif
-    public class ThirdPersonController : NetworkBehaviour
+    public class PlayerController : NetworkBehaviour
     {
         [Header("Player")]
         [Tooltip("Move speed of the character in m/s")]
@@ -77,6 +77,9 @@ namespace StarterAssets
         [Tooltip("For locking the camera position on all axis")]
         public bool LockCameraPosition = false;
 
+        [SerializeField] private bool enableFirstPerson = false;
+
+
         // cinemachine
         private float _cinemachineTargetYaw;
         private float _cinemachineTargetPitch;
@@ -109,6 +112,7 @@ namespace StarterAssets
         private GameObject _mainCamera;
         private CinemachineVirtualCamera _cinemachineVirtualCamera;
 
+
         private const float _threshold = 0.01f;
 
         private bool _hasAnimator;
@@ -134,7 +138,7 @@ namespace StarterAssets
                 _mainCamera = GameObject.FindGameObjectWithTag("MainCamera");
             }
 
-            if(_cinemachineVirtualCamera == null)
+            if (_cinemachineVirtualCamera == null)
             {
                 _cinemachineVirtualCamera = GameObject.FindFirstObjectByType<CinemachineVirtualCamera>();
             }
@@ -143,15 +147,24 @@ namespace StarterAssets
         private void Start()
         {
             _cinemachineTargetYaw = CinemachineCameraTarget.transform.rotation.eulerAngles.y;
-            
+
             _hasAnimator = TryGetComponent(out _animator);
             _controller = GetComponent<CharacterController>();
             _input = GetComponent<StarterAssetsInputs>();
-/*#if ENABLE_INPUT_SYSTEM 
+
+
+#if ENABLE_INPUT_SYSTEM
+
             _playerInput = GetComponent<PlayerInput>();
+            if (_playerInput != null)
+            {
+                _playerInput.enabled = true;
+            }
+            _cinemachineVirtualCamera.Follow = transform.GetChild(0);
+
 #else
 			Debug.LogError( "Starter Assets package is missing dependencies. Please use Tools/Starter Assets/Reinstall Dependencies to fix it");
-#endif*/
+#endif
 
             AssignAnimationIDs();
 
@@ -164,7 +177,7 @@ namespace StarterAssets
         {
             base.OnNetworkSpawn();
 
-            if(IsClient && IsOwner)
+            if (IsClient && IsOwner)
             {
                 _playerInput = GetComponent<PlayerInput>();
                 _playerInput.enabled = true;
@@ -174,13 +187,49 @@ namespace StarterAssets
 
         private void Update()
         {
-            if (!IsOwner) return;
+
+#if ENABLE_INPUT_SYSTEM
+            // In offline mode (no network), IsOwner will be false, so check if _playerInput exists
+
+            if (!IsSpawned && !_playerInput.enabled) return;
+#endif
+            if (IsSpawned && !IsOwner) return;
 
             _hasAnimator = TryGetComponent(out _animator);
 
             JumpAndGravity();
+            ToggleCamera();
             GroundedCheck();
             Move();
+
+        }
+
+        private void ToggleCamera()
+        {
+            if (_input.toggleCamera)
+            {
+                _input.toggleCamera = false; // Reset to prevent continuous toggling
+
+                enableFirstPerson = !enableFirstPerson;
+
+                if (enableFirstPerson)
+                {
+                    // Switch to first person camera
+                    GameEvents.TriggerOnPlayerChangeCameraType(GameTypes.CameraType.FIRST_PERSON);
+                    _cinemachineVirtualCamera.Follow = CinemachineCameraTarget.transform;
+                    _cinemachineVirtualCamera.GetComponent<CinemachineCameraOffset>().m_Offset = new Vector3(0,0,0);
+      
+                }
+                else
+                {
+                   
+                    GameEvents.TriggerOnPlayerChangeCameraType(GameTypes.CameraType.THIRD_PERSON);
+                    _cinemachineVirtualCamera.GetComponent<CinemachineCameraOffset>().m_Offset = new Vector3(0,0,-4);
+                    
+                    // Switch back to third person
+                    //_cinemachineVirtualCamera.Follow = transform.GetChild(0);
+                }
+            }
         }
 
         private void LateUpdate()
